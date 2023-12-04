@@ -1,11 +1,6 @@
 import java.io.*;
 import java.util.Scanner;
 
-interface Connectable {
-    void connect();
-    void disconnect();
-}
-
 interface InformationProvider {
     String getInfo();
 }
@@ -36,7 +31,7 @@ abstract class ElectronicDevice implements InformationProvider {
     }
 }
 
-class Cable extends ElectronicDevice implements Connectable {
+class Cable extends ElectronicDevice {
     private int length;
 
     public Cable(String brand, double price, int length) {
@@ -53,22 +48,12 @@ class Cable extends ElectronicDevice implements Connectable {
     }
 
     @Override
-    public void connect() {
-        System.out.println("Кабель подключен.");
-    }
-
-    @Override
-    public void disconnect() {
-        System.out.println("Кабель отключен.");
-    }
-
-    @Override
     public String getInfo() {
         return "Кабель [бренд=" + getBrand() + ", цена=" + getPrice() + ", длина=" + length + "]";
     }
 }
 
-class Capability extends ElectronicDevice implements Connectable, InformationProvider {
+class Capability extends ElectronicDevice {
     private String feature;
 
     public Capability(String brand, double price, String feature) {
@@ -85,22 +70,12 @@ class Capability extends ElectronicDevice implements Connectable, InformationPro
     }
 
     @Override
-    public void connect() {
-        System.out.println("Возможность подключена.");
-    }
-
-    @Override
-    public void disconnect() {
-        System.out.println("Возможность отключена.");
-    }
-
-    @Override
     public String getInfo() {
         return "Возможность [бренд=" + getBrand() + ", цена=" + getPrice() + ", особенность=" + feature + "]";
     }
 }
 
-class Case extends ElectronicDevice implements InformationProvider {
+class Case extends ElectronicDevice {
     private String material;
 
     public Case(String brand, double price, String material) {
@@ -170,10 +145,27 @@ public class Main {
                     continue;
             }
 
-            System.out.print("Хотите записать информацию об устройстве в файл? (y/n): ");
-            String writeToFIle = scanner.nextLine();
-            if (writeToFIle.equalsIgnoreCase("y")) {
-                writeDeviceInfoToFile(infoProviderDevices[count]);
+            System.out.println("Выберите тип записи в файл:");
+            System.out.println("1. FileOutputStream");
+            System.out.println("2. BufferedOutputStream");
+            System.out.println("3. ByteArrayOutputStream");
+            int writeChoice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (writeChoice) {
+                case 1:
+                    writeDeviceInfoToFile(infoProviderDevices[count], "deviceInfo.txt");
+                    break;
+                case 2:
+                    writeDeviceInfoToFile(infoProviderDevices[count], "deviceInfo.txt", true);
+                    break;
+                case 3:
+                    String data = writeDeviceInfoToByteArray(infoProviderDevices[count]);
+                    writeByteArrayToFile(data, "deviceInfo.txt");
+                    break;
+                default:
+                    writeDeviceInfoToFile(infoProviderDevices[count], "deviceInfo.txt");
+                    break;
             }
 
             count++;
@@ -184,36 +176,61 @@ public class Main {
                 continueInput = false;
             }
         }
-        System.out.println();
 
-        System.out.println("Информация об устройствах:");
-        for (InformationProvider device : infoProviderDevices) {
-            if (device != null) {
-                System.out.println(device.getInfo());
-            }
+        System.out.println("\nИнформация об устройствах:");
+        for (int i = 0; i < count; i++) {
+            System.out.println(infoProviderDevices[i].getInfo());
         }
-        System.out.println();
 
-        readDeviceInfoFromFile();
+        System.out.println("\nЧтение информации из файла:");
+        readDeviceInfoFromFile("deviceInfo.txt");
 
         scanner.close();
     }
 
-    private static void writeDeviceInfoToFile(InformationProvider device) {
-        try (FileOutputStream fileOutputStream = new FileOutputStream("deviceInfo.txt",true)) {
+    private static void writeDeviceInfoToFile(InformationProvider device, String fileName) {
+        try (PrintStream printStream = new PrintStream(new FileOutputStream(fileName, true))) {
             String info = device.getInfo() + "\n";
-            fileOutputStream.write(info.getBytes());
-            System.out.println("Информация успешно записана в файл deviceInfo.txt");
+            printStream.println(info);
+            System.out.println("Информация успешно записана в файл " + fileName);
         } catch (IOException e) {
             System.out.println("Ошибка при записи данных в файл: " + e.getMessage());
         }
     }
 
-    private static void readDeviceInfoFromFile() {
-        try (FileInputStream fileInputStream = new FileInputStream("deviceInfo.txt");
-             BufferedReader reader = new BufferedReader(new InputStreamReader(fileInputStream))) {
-            System.out.println("Информация из файла deviceInfo.txt:");
+    private static void writeDeviceInfoToFile(InformationProvider device, String fileName, boolean useBuffered) {
+        try (PrintStream printStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(fileName, true)))) {
+            String info = device.getInfo() + "\n";
+            printStream.println(info);
+            System.out.println("Информация успешно записана в файл " + fileName);
+        } catch (IOException e) {
+            System.out.println("Ошибка при записи данных в файл: " + e.getMessage());
+        }
+    }
 
+    private static String writeDeviceInfoToByteArray(InformationProvider device) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (PrintStream printStream = new PrintStream(byteArrayOutputStream)) {
+            String info = device.getInfo() + "\n";
+            printStream.println(info);
+            return byteArrayOutputStream.toString();
+        } catch (Exception e) {
+            System.out.println("Ошибка при записи данных в ByteArrayOutputStream: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private static void writeByteArrayToFile(String data, String fileName) {
+        try (PrintStream printStream = new PrintStream(new FileOutputStream(fileName, true))) {
+            printStream.println(data);
+            System.out.println("Информация успешно записана в файл " + fileName);
+        } catch (IOException e) {
+            System.out.println("Ошибка при записи данных из ByteArrayOutputStream в файл: " + e.getMessage());
+        }
+    }
+
+    private static void readDeviceInfoFromFile(String fileName) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println(line);
